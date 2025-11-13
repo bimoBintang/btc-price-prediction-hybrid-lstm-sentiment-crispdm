@@ -1,0 +1,16 @@
+yfinance
+kagglehub
+tensorflow
+sentence-transformers
+numpy
+pandas
+scikit-learn
+matplotlib
+torch
+torchvision
+transformers
+tf-keras
+nltk
+snscrape
+python-dotenv
+dotenv

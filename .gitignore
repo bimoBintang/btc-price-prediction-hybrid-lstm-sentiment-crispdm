@@ -1,0 +1,7 @@
+/myenv
+/models/*
+/models/**
+.env
+.env*
+.env.production
+.env.devlopment
