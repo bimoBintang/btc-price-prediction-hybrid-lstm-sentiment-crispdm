@@ -1,6 +1,7 @@
 import torch
 
-
+from src.data_understanding.load_price import load_btc_price
+from src.data_understanding.scrape_sentiment import get_
 
 def get_best_device():
     # Check for CUDA (NVIDIA GPU) availability
@@ -21,4 +22,8 @@ def get_best_device():
 def main():
     get_best_device()
 
-    
+
+    # Data Understand
+    btc = load_btc_price()
+
+

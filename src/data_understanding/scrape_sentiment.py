@@ -1,5 +1,5 @@
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 import json
 from nltk.sentiment.vader import SentimentIntensityAnalyzer 
 import nltk
@@ -9,23 +9,67 @@ import snscrape.modules.twitter as sntwitter
 import snscrape.modules.facebook as snfacebook
 import snscrape.modules.instagram as sninstagram
 import snscrape.modules.telegram as sntelegram
-import snscrape.modules.mastodon as snmastodon
-import praw
 import os
 
 
 nltk.download('vader_lexicon')
 
-RADDIT_CLIENT_ID = os.environ.get('RADDIT_CLIENT_ID')
-RADDIT_CLIENT_SECRET = os.environ.get('RADDIT_CLIENT_SECRET')
-RADDIT_USER_AGENT = os.environ.get('RADDIT_USER_AGENT')
+RADDIT_CLIENT_ID = os.environ.get('RADDIT_CLIENT_ID') if os.environ.get('RADDIT_CLIENT_ID') else 'value'
+RADDIT_CLIENT_SECRET = os.environ.get('RADDIT_CLIENT_SECRET') if os.environ.get('RADDIT_CLIENT_SECRET') else 'value'
+RADDIT_USER_AGENT = os.environ.get('RADDIT_USER_AGENT') if os.environ.get('RADDIT_USER_AGENT') else 'value'
 
-INSTAGRAM_CLIENT_ID = os.environ.get('INSTAGRAM_CLIENT_ID')
-INSTAGRAM_CLIENT_SECRET = os.environ.get('INSTAGRAM_CLIENT_SECRET')
-INSTAGRAM_USER_AGENT = os.environ.get('INSTAGRAM_USER_AGENT')
+INSTAGRAM_CLIENT_ID = os.environ.get('INSTAGRAM_CLIENT_ID') if os.environ.get('INSTAGRAM_CLIENT_ID') else 'value'
+INSTAGRAM_CLIENT_SECRET = os.environ.get('INSTAGRAM_CLIENT_SECRET') if os.environ.get('INSTAGRAM_CLIENT_SECRET') else 'value'
+INSTAGRAM_USER_AGENT = os.environ.get('INSTAGRAM_USER_AGENT') if os.environ.get('INSTAGRAM_USER_AGENT') else 'value'
 
 
 sid = SentimentIntensityAnalyzer()
+
+
+def get_sentiment_data(start_date, end_date, query):
+    json_file = 'data/raw/btc_sentiment_daily.json'
+    os.makedirs(os.path.dirname(json_file), exist_ok=True)
+
+    if os.path.exists(json_file):
+        print(f"Memuat sentimen dari {json_file}")
+        with open(json_file, 'r') as f:
+            data = json.load(f)
+            df = pd.DataFrame(data)
+            if 'Date' in df.columns:
+                 df.index = pd.to_datetime(df.index)
+        return df
+
+    print("Scraping sentimen dari Twitter & Reddit...")
+    twitter_df = scrape_twitter_sentiment(start_date, end_date)
+    reddit_df = scrape_raddit_sentiment(start_date, end_date)
+    instagram_df = scrape_instagram_sentiment(start_date, end_date)
+    facebook_df = scrape_facebook_sentiment(start_date, end_date, query=query)
+    telegram_df = scrape_telegram_sentiment(start_date, end_date, query=query)
+
+    # Combine all dataframes
+    df_list = [df for df in [twitter_df, reddit_df, instagram_df, telegram_df, facebook_df] if not df.empty]
+    
+    if not df_list:
+        print("Tidak ada data yang berhasil di-scrape!")
+        return pd.DataFrame()
+
+    combined = pd.concat(df_list, ignore_index=True)
+    
+    daily = combined.groupby ('Date').agg({
+        'Net_Sentiment_Score': 'mean',
+        'Discussion_Volume': 'sum',
+        'Engagement': 'sum'
+    }).reset_index()
+
+    # Simpan ke JSON dengan format yang proper
+    daily_json = daily.to_dict(orient='records')
+    for record in daily_json:
+        record['Date'] = record['Date'].strftime('%Y-%m-%d')
+    
+    with open(json_file, 'w') as f:
+        json.dump(daily_json, f, indent=2)
+
+    return daily
 
 def aggregate_daily(items_list, platform_name):
     """Agregasi data harian dengan sentiment analysis"""
@@ -50,8 +94,8 @@ def aggregate_daily(items_list, platform_name):
 
 
 def analyze_sentiment(text):
-    secores =sid.polarity_scores(text)
-    return secores['compound']
+    scores =sid.polarity_scores(text)
+    return scores['compound']
 
 def scrape_twitter_sentiment(start_date, end_date, query='bitcoin OR btc', max_items=1000):
     start_str = start_date.strftime('%Y-%m-%d')
@@ -82,11 +126,18 @@ def scrape_twitter_sentiment(start_date, end_date, query='bitcoin OR btc', max_i
     return aggregate_daily(items_list, 'Twitter')
 
 
-def scrape_raddit_sentiment(sub_raddit_name, query='bitcoin', limit=500):
-    
+def scrape_reddit_sentiment(start_date, end_date, subreddit_name='cryptocurrency', query='bitcoin', limit=500):
+    start_str = start_date.strftime('%Y-%m-%d')
+    end_str = end_date.strftime('%Y-%m-%d')
+    full_query = f'{query} since:{start_str} until:{end_str} lang:en'
+
     posts_list =[]
     try:
-        scraper = snreddit.RedditSubredditScraper(name=sub_raddit_name)
+        if subreddit_name:
+            scraper = snreddit.RedditSubredditScraper(subreddit=subreddit_name)
+        else:
+            scraper = snreddit.RedditSearchScraper(full_query)
+
         for i, post in enumerate(scraper.get_items()):
             if i >= limit:
                 break
@@ -112,11 +163,17 @@ def scrape_raddit_sentiment(sub_raddit_name, query='bitcoin', limit=500):
     return aggregate_daily(posts_list, 'Reddit')
 
 
-def scrape_instagram_sentiment(hastag_name, username, location, limit=500):
+def scrape_instagram_sentiment(start_date, end_date, hastag_name = None, username = None, location = None, limit=500):
+    start_str = start_date.strftime('%Y-%m-%d')
+    end_str = end_date.strftime('%Y-%m-%d')
+    full_query = f'{hastag_name} since:{start_str} until:{end_str} lang:en'
+    
     posts_list = []
-
     try:
-        scraper = sninstagram.InstagramHashtagScraper(hashtag=hastag_name) | sninstagram.InstagramHashtagScraper(username=username) | sninstagram.InstagramLocationScraper(locationId=location)
+        scraper = sninstagram.InstagramHashtagScraper(hashtag=hastag_name) or \
+            sninstagram.InstagramHashtagScraper(username=username) or \
+            sninstagram.InstagramLocationScraper(locationId=location) or \
+            sninstagram.InstagramPost.content(full_query)
 
         for i, post in enumerate(scraper.get_items()):
             if i >= limit:
@@ -163,18 +220,39 @@ def scrape_instagram_sentiment(hastag_name, username, location, limit=500):
     return aggregate_daily(posts_list, 'Instagram')
 
 
-def scrape_telegram_sentiment(channel_name, limit=500):
+def scrape_telegram_sentiment(start_date, end_date, query='bitcoin', channel_name=None, limit=500):
+    start_str = start_date.strftime('%Y-%m-%d')
+    end_str = end_date.strftime('%Y-%m-%d')
+    full_query = f'{query} since:{start_str} until:{end_str} lang:en'
+    
+    if not channel_name:
+        print("[Telegram] Error: Must provide channel_name")
+        return pd.DataFrame()
+    
     channels_list = []
+
     try:
-        scraper = sntelegram.TelegramChannelScraper(channel_name)
+        scraper = sntelegram.TelegramChannelScraper(channel_name) or \
+            sntelegram.TelegramPost.content(full_query) or \
+            sninstagram.InstagramPost.content(full_query)
 
         for i, msg in enumerate(scraper.get_items()):
             if i >= limit:
                 break
 
+            # Filter berdasarkan query
+            text = msg.content or ''
+            if query.lower() not in text.lower():
+                continue
+
+            # Filter tanggal
+            msg_date = pd.to_datetime(msg.date).date() if msg.date else datetime.now().date()
+            if not (start_date.date() <= msg_date <= end_date.date()):
+                continue
+
             channels_list.append({
-                'Date': pd.to_datetime(msg.date).date() if msg.date else datetime.now().date(),
-                'Text': msg.content or '',
+                'Date': msg_date,
+                'Text': text,
                 'Engagement': getattr(msg, 'views', 0),
                 'Platform': 'Telegram'
             })
@@ -189,18 +267,40 @@ def scrape_telegram_sentiment(channel_name, limit=500):
     return aggregate_daily(channels_list, 'Telegram')
 
 
-def scrape_facebook_sentiment(usernname, group, posts, community, limit=500):
+def scrape_facebook_sentiment(start_date, end_date, query='bitcoin', username=None, group=None, posts=None, community=None, limit=500):
+    start_str = start_date.strftime('%Y-%m-%d')
+    end_str = end_date.strftime('%Y-%m-%d')
+    full_query = f'{query} since:{start_str} until:{end_str} lang:en'
+    
     posts_list = []
     try:
-        scraper = snfacebook.FacebookPost(posts) | snfacebook.FacebookGroupScraper(group=group) | snfacebook.FacebookUserScraper(usernname) | snfacebook.FacebookCommunityScraper(community)
+        if group:
+            scraper = snfacebook.FacebookGroupScraper(group=group)
+        elif username:
+            scraper = snfacebook.FacebookUserScraper(username)
+        elif community:
+            scraper = snfacebook.FacebookCommunityScraper(community)
+        else:
+            # Default: gunakan search
+            scraper = snfacebook.FacebookSearchScraper(query)
 
         for i, post in enumerate(scraper.get_items()):
             if i >= limit:
                 break
 
+            # Filter berdasarkan query
+            text = post.text or ''
+            if query.lower() not in text.lower():
+                continue
+
+            # Filter tanggal
+            post_date = pd.to_datetime(post.date).date() if post.date else datetime.now().date()
+            if not (start_date.date() <= post_date <= end_date.date()):
+                continue
+
             posts_list.append({
-                'Date': pd.to_datetime(post.date).date() if post.date else datetime.now().date(),
-                'Text': post.text or '',
+                'Date': post_date,
+                'Text': text,
                 'Engagement': getattr(post, 'likes', 0) + getattr(post, 'shares', 0),
                 'Platform': 'Facebook'
             })

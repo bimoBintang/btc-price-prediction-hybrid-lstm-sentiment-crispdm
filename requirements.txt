@@ -14,3 +14,4 @@ nltk
 snscrape
 python-dotenv
 dotenv
+statsmodels

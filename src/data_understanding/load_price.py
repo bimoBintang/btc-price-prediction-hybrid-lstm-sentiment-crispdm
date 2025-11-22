@@ -3,6 +3,11 @@ import json
 from datetime import datetime, timedelta
 import pandas as pd
 
+
+# async def get_btc_price():
+#     start_date = datetime(2025, 11, 17)
+#     end_date = start_date - timedelta(days=1095)
+
 def load_btc_price():
     with open('BTC-USD_historical_data.json', 'r') as f:
         existing_data = json.load(f)
