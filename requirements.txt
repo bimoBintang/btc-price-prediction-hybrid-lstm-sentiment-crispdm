@@ -15,3 +15,4 @@ snscrape
 python-dotenv
 dotenv
 statsmodels
+shap

@@ -14,9 +14,9 @@ import os
 
 nltk.download('vader_lexicon')
 
-RADDIT_CLIENT_ID = os.environ.get('RADDIT_CLIENT_ID') if os.environ.get('RADDIT_CLIENT_ID') else 'value'
-RADDIT_CLIENT_SECRET = os.environ.get('RADDIT_CLIENT_SECRET') if os.environ.get('RADDIT_CLIENT_SECRET') else 'value'
-RADDIT_USER_AGENT = os.environ.get('RADDIT_USER_AGENT') if os.environ.get('RADDIT_USER_AGENT') else 'value'
+RADDIT_CLIENT_ID = os.environ.get('REDDIT_CLIENT_ID') if os.environ.get('REDDIT_CLIENT_ID') else 'value'
+RADDIT_CLIENT_SECRET = os.environ.get('REDDIT_CLIENT_SECRET') if os.environ.get('REDDIT_CLIENT_SECRET') else 'value'
+RADDIT_USER_AGENT = os.environ.get('REDDIT_USER_AGENT') if os.environ.get('REDDIT_USER_AGENT') else 'value'
 
 INSTAGRAM_CLIENT_ID = os.environ.get('INSTAGRAM_CLIENT_ID') if os.environ.get('INSTAGRAM_CLIENT_ID') else 'value'
 INSTAGRAM_CLIENT_SECRET = os.environ.get('INSTAGRAM_CLIENT_SECRET') if os.environ.get('INSTAGRAM_CLIENT_SECRET') else 'value'
@@ -41,7 +41,7 @@ def get_sentiment_data(start_date, end_date, query):
 
     print("Scraping sentimen dari Twitter & Reddit...")
     twitter_df = scrape_twitter_sentiment(start_date, end_date)
-    reddit_df = scrape_raddit_sentiment(start_date, end_date)
+    reddit_df = scrape_reddit_sentiment(start_date, end_date)
     instagram_df = scrape_instagram_sentiment(start_date, end_date)
     facebook_df = scrape_facebook_sentiment(start_date, end_date, query=query)
     telegram_df = scrape_telegram_sentiment(start_date, end_date, query=query)
