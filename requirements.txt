@@ -16,3 +16,7 @@ python-dotenv
 dotenv
 statsmodels
 shap
+pydantic
+fastapi
+uvicorn
+ta

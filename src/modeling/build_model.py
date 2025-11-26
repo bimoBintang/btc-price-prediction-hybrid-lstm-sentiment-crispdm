@@ -1,4 +1,3 @@
-# src/modeling/build_model.py
 from tensorflow import keras
 
 def build_lstm_model(input_shape):
