@@ -20,3 +20,4 @@ pydantic
 fastapi
 uvicorn
 ta
+sqlalchemy

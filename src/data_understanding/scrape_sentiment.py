@@ -3,6 +3,7 @@ from datetime import datetime
 import json
 from nltk.sentiment.vader import SentimentIntensityAnalyzer 
 import nltk
+from twscrape import API, gather
 
 import snscrape.modules.reddit as snreddit
 import os
@@ -25,7 +26,6 @@ sid = SentimentIntensityAnalyzer()
 
 
 try:
-    from twscrape import API, gather
     TWSCRAPE_AVAILABLE = True
 except ImportError:
     TWSCRAPE_AVAILABLE = False
@@ -86,13 +86,14 @@ def get_sentiment_data(config: Dict[str, Any]):
             )
         instagram_df = DataScrapeingColletor._scrape_instagram_sentiment(
             start_date=config.get('start_date'), 
-            end_date=config.get('end-date'),
+            end_date=config.get('end_date'),
             hashtag=config.get('hashtag')
             )
         facebook_df = DataScrapeingColletor._scrape_facebook_sentiment(
             start_date=config.get('start_date'), 
             end_date=config.get('end_date'), 
-            query=config.get('query'))
+            query=config.get('query')
+            )
 
         # gabungan semua dataframes
         df_list = [df for df in [twitter_df, reddit_df, instagram_df, facebook_df] if not df.empty]
@@ -134,9 +135,6 @@ class DataScrapeingColletor:
         # Facebook
         self.access_token = config.get('facebook_access_token')
         self.page_id = config.get('facebook_page_id')
-
-        self.bearer_token = config.get('bearer_token')
-        self.base_url = os.environ.get('TWITTER_API_KEY') if os.environ.get('V') else 'value'
 
     async def _scrape_twitter_sentiment(self, start_date: datetime, end_date: datetime, query='bitcoin OR btc', limit=1000) -> pd.DataFrame:
        items_list = []
@@ -224,7 +222,7 @@ class DataScrapeingColletor:
             pd.DataFrame()
         
         try:
-            url = os.environ.get('META_API_KEY') + f"v18.0/{self.business_account_id}/media"
+            url = os.getenv('META_API_KEY' + f"v18.0/{self.business_account_id}/media")
 
             posts_list = []
             params ={
@@ -293,7 +291,7 @@ class DataScrapeingColletor:
             return pd.DataFrame()
         
         try:
-            url = os.environ.get('META_API_KEY') + "v18.0/{self.page_id}/posts"
+            url = os.getenv('META_API_KEY' + "v18.0/{self.page_id}/posts")
 
             params = {
                 'access_token': self.access_token,
@@ -348,7 +346,7 @@ class DataScrapeingColletor:
     
     def _scrape_news_sentiment(self, start_date: datetime, end_date: datetime, query="bitcoin", language= Dict[str], limit=100) -> pd.DataFrame:
         try:
-            url = os.environ.get('NEWS_API_KEY') if os.environ.get('NEWS_API_KEY') else 'value'
+            url = os.getenv('NEWS_API_KEY') if os.getenv('NEWS_API_KEY') else 'value'
             from_date = start_date.strftime('%Y-%m-%d')
             to_date = end_date.strftime('%Y-%m-%d')
 
