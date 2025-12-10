@@ -1,6 +1,6 @@
 /myenv
-/models/*
-/models/**
+# /models/*
+# /models/**
 .env
 .env*
 .env.production

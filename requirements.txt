@@ -21,3 +21,4 @@ fastapi
 uvicorn
 ta
 sqlalchemy
+huggingface-hub
