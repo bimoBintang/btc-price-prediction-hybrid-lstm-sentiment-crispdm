@@ -26,7 +26,7 @@
 ## 📝 Overview
 
 Sistem ini memprediksi harga Bitcoin menggunakan:
-- **Data Sources**: CoinGecko, Twitter, Reddit, News API
+- **Data Sources**: YFinance (Yahoo Finance), CoinGecko, Twitter, Reddit, News API
 - **Technical Indicators**: SMA, EMA, RSI, MACD, Bollinger Bands, ATR
 - **Sentiment Analysis**: BERT/Transformer-based sentiment scoring
 - **Models**: LSTM, GRU, Transformer, Ensemble
@@ -42,10 +42,10 @@ Sistem ini memprediksi harga Bitcoin menggunakan:
 │                      Apache Airflow (Orchestrator)               │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
-│  │  Twitter API │  │  Reddit API  │  │ CoinGecko API│           │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘           │
-│         │                  │                  │                  │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐            │
+│  │ YFinance │ │  Twitter │ │  Reddit  │ │CoinGecko │            │
+│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘            │
+│       │            │            │            │                   │
 │         └──────────────────┼──────────────────┘                  │
 │                            ▼                                     │
 │                 ┌─────────────────────┐                          │
@@ -79,7 +79,7 @@ Sistem ini memprediksi harga Bitcoin menggunakan:
 
 | Feature | Description |
 |---------|-------------|
-| 📊 **Multi-Source Data** | Twitter, Reddit, CoinGecko, News API |
+| 📊 **Multi-Source Data** | YFinance (primary), CoinGecko, Twitter, Reddit, News API |
 | 📈 **Technical Indicators** | SMA, EMA, RSI, MACD, Bollinger, ATR |
 | 🤖 **4 Model Types** | LSTM, GRU, Transformer, Ensemble |
 | 🎯 **Auto Model Selection** | Best model picked by lowest RMSE |
@@ -221,7 +221,8 @@ GET /api/dashboard           # All dashboard data in one request
     "upper_95": 102113.03
   },
   "prediction_date": "2024-12-12",
-  "model_name": "ensemble"
+  "model_name": "ensemble",
+  "source": "yfinance"
 }
 ```
 
@@ -257,8 +258,9 @@ src/
 ├── pipeline/                     # ML Pipeline
 │   ├── btc_prediction_dag.py     # Airflow DAG
 │   ├── data_collection/          # Data scrapers
-│   │   ├── coingecko_client.py
-│   │   └── data_collector.py
+│   │   ├── yfinance_client.py    # Yahoo Finance client (primary)
+│   │   ├── coingecko_client.py   # CoinGecko client (fallback)
+│   │   └── data_collector.py     # Unified collector
 │   ├── data_processing/          # Feature engineering
 │   │   └── data_processor.py
 │   ├── models/                   # ML models

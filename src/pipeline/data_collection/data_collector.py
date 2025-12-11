@@ -6,6 +6,7 @@ import asyncio
 
 # Internal imports
 from .coingecko_client import CoinGeckoClient
+from .yfinance_client import YFinanceClient
 
 # Import existing scraper (adjust path as needed)
 # import sys
@@ -19,6 +20,7 @@ class DataCollector:
     - Twitter (via twscrape)
     - Reddit (via snscrape)  
     - CoinGecko (price and market data)
+    - YFinance (Yahoo Finance BTC-USD data)
     - News API
     
     This is the main entry point for the data collection layer of the pipeline.
@@ -37,6 +39,9 @@ class DataCollector:
         self.coingecko_client = CoinGeckoClient(
             api_key=self.config.get('coingecko_api_key')
         )
+        
+        # Initialize YFinance client
+        self.yfinance_client = YFinanceClient(symbol="BTC-USD")
         
         self.sentiment_collector = DataScrapingCollector(self.config)
         
@@ -262,11 +267,41 @@ class DataCollector:
             print(f"[DataCollector] Error scraping news: {e}")
             return pd.DataFrame()
     
+    def collect_yfinance_data(self, days: int = 365) -> Dict[str, Any]:
+        """
+        Collect price data from Yahoo Finance.
+        
+        Args:
+            days: Number of days of historical data
+            
+        Returns:
+            Dict with YFinance data
+        """
+        cache_key = f"yfinance_{days}"
+        
+        if self._is_cache_valid(cache_key):
+            print("[DataCollector] Using cached YFinance data")
+            return self._cache[cache_key]
+        
+        print(f"[DataCollector] Fetching YFinance data...")
+        
+        data = {
+            'current': self.yfinance_client.get_current_price(),
+            'historical': self.yfinance_client.get_historical_prices(days=days),
+            'market_info': self.yfinance_client.get_market_info(),
+            'source': 'yfinance',
+            'collected_at': datetime.now()
+        }
+        
+        self._set_cache(cache_key, data)
+        return data
+    
     def collect_all(
         self,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
-        days: int = 30
+        days: int = 30,
+        use_yfinance: bool = True
     ) -> Dict[str, Any]:
         """
         Collect all data from all sources.
@@ -275,6 +310,7 @@ class DataCollector:
             start_date: Start date (default: days ago)
             end_date: End date (default: now)
             days: Number of days if dates not specified
+            use_yfinance: Whether to fetch data from YFinance
             
         Returns:
             Dict with all collected data
@@ -286,8 +322,13 @@ class DataCollector:
         
         print(f"[DataCollector] Collecting all data from {start_date.date()} to {end_date.date()}")
         
-        # Collect price data
+        # Collect price data from CoinGecko
         price_data = self.collect_price_data(days=days)
+        
+        # Collect YFinance data (optional)
+        yfinance_data = None
+        if use_yfinance:
+            yfinance_data = self.collect_yfinance_data(days=days)
         
         # Collect sentiment data
         sentiment_data = self.collect_sentiment_data(
@@ -309,6 +350,7 @@ class DataCollector:
         
         return {
             'price': price_data,
+            'yfinance': yfinance_data,
             'sentiment': sentiment_data,
             'reddit': reddit_data,
             'news': news_data,
@@ -343,3 +385,9 @@ if __name__ == "__main__":
     price_data = collector.collect_price_data(days=7)
     print(f"Current BTC Price: ${price_data['current'].get('price', 0):,.2f}")
     print(f"Historical data points: {len(price_data['historical_ohlcv'])}")
+    
+    print("\n=== Testing YFinance Data Collection ===")
+    yf_data = collector.collect_yfinance_data(days=30)
+    print(f"YFinance Current Price: ${yf_data['current'].get('price', 0):,.2f}")
+    print(f"YFinance Historical data points: {len(yf_data['historical'])}")
+

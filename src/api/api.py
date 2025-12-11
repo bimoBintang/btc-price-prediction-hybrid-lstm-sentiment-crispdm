@@ -124,6 +124,7 @@ class APIService:
     
     def __init__(self):
         self._coingecko_client = None
+        self._yfinance_client = None
         self._prediction_service = None
         self._data_processor = None
         self._cache = {}
@@ -135,6 +136,13 @@ class APIService:
             from pipeline.data_collection import CoinGeckoClient
             self._coingecko_client = CoinGeckoClient()
         return self._coingecko_client
+    
+    @property
+    def yfinance_client(self):
+        if self._yfinance_client is None:
+            from pipeline.data_collection import YFinanceClient
+            self._yfinance_client = YFinanceClient(symbol="BTC-USD")
+        return self._yfinance_client
     
     @property
     def prediction_service(self):
@@ -162,13 +170,33 @@ class APIService:
         """Set cache value."""
         self._cache[key] = (value, datetime.now())
     
-    def get_current_price(self) -> Dict[str, Any]:
-        """Get current BTC price."""
+    def get_current_price(self, source: str = "yfinance") -> Dict[str, Any]:
+        """Get current BTC price from YFinance or CoinGecko."""
         cached = self._get_cached('current_price')
         if cached:
             return cached
         
         try:
+            # Try YFinance first (more reliable)
+            if source == "yfinance":
+                yf_data = self.yfinance_client.get_current_price()
+                
+                if yf_data.get('price', 0) > 0:
+                    result = {
+                        'price': yf_data.get('price', 0),
+                        'change_24h': yf_data.get('change', 0),
+                        'change_pct_24h': yf_data.get('change_percent', 0),
+                        'high_24h': yf_data.get('day_high', 0),
+                        'low_24h': yf_data.get('day_low', 0),
+                        'volume_24h': yf_data.get('volume', 0),
+                        'market_cap': yf_data.get('market_cap', 0),
+                        'timestamp': datetime.now().isoformat(),
+                        'source': 'yfinance'
+                    }
+                    self._set_cache('current_price', result)
+                    return result
+            
+            # Fallback to CoinGecko
             data = self.coingecko_client.get_current_price()
             market = self.coingecko_client.get_market_data()
             
@@ -180,13 +208,14 @@ class APIService:
                 'low_24h': market.get('low_24h', 0),
                 'volume_24h': market.get('total_volume', 0),
                 'market_cap': market.get('market_cap', 0),
-                'timestamp': datetime.now().isoformat()
+                'timestamp': datetime.now().isoformat(),
+                'source': 'coingecko'
             }
             
             self._set_cache('current_price', result)
             return result
         except Exception as e:
-            # Return mock data if API fails
+            # Return mock data if all APIs fail
             return {
                 'price': 95000,
                 'change_24h': 1500,
@@ -196,18 +225,39 @@ class APIService:
                 'volume_24h': 25000000000,
                 'market_cap': 1800000000000,
                 'timestamp': datetime.now().isoformat(),
-                'mock': True,
+                'source': 'mock',
                 'error': str(e)
             }
     
-    def get_historical_prices(self, days: int = 30) -> List[Dict[str, Any]]:
-        """Get historical price data."""
-        cache_key = f'historical_{days}'
+    def get_historical_prices(self, days: int = 30, source: str = "yfinance") -> List[Dict[str, Any]]:
+        """Get historical price data from YFinance or CoinGecko."""
+        cache_key = f'historical_{days}_{source}'
         cached = self._get_cached(cache_key)
         if cached:
             return cached
         
         try:
+            # Try YFinance first
+            if source == "yfinance":
+                df = self.yfinance_client.get_historical_prices(days=days)
+                
+                if not df.empty:
+                    result = []
+                    for idx, row in df.iterrows():
+                        result.append({
+                            'date': idx.strftime('%Y-%m-%d') if hasattr(idx, 'strftime') else str(idx),
+                            'open': float(row.get('open', 0)),
+                            'high': float(row.get('high', 0)),
+                            'low': float(row.get('low', 0)),
+                            'close': float(row.get('close', 0)),
+                            'volume': float(row.get('volume', 0)) if 'volume' in row else 0,
+                            'source': 'yfinance'
+                        })
+                    
+                    self._set_cache(cache_key, result)
+                    return result
+            
+            # Fallback to CoinGecko
             df = self.coingecko_client.get_historical_prices(days=days)
             
             if df.empty:

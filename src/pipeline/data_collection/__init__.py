@@ -2,5 +2,7 @@
 
 from .data_collector import DataCollector
 from .coingecko_client import CoinGeckoClient
+from .yfinance_client import YFinanceClient
 
-__all__ = ['DataCollector', 'CoinGeckoClient']
+__all__ = ['DataCollector', 'CoinGeckoClient', 'YFinanceClient']
+
