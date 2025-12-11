@@ -1,293 +1,448 @@
-# API Documentation: Crypto Price Prediction with Sentiment Analysis
+# 🚀 BTC Price Prediction - Hybrid LSTM + Sentiment Analysis
 
-**Version:** 1.0.0
-**Last Updated:** 2025
-**Backend:** Python (FastAPI/Flask) with SQLAlchemy
-**Frontend:** Next.js
+> Machine Learning pipeline untuk prediksi harga Bitcoin menggunakan kombinasi LSTM, Transformer, dan Sentiment Analysis dengan metodologi CRISP-DM.
+
+[![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg)](https://fastapi.tiangolo.com)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-red.svg)](https://pytorch.org)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+---
+
+## 📋 Daftar Isi
+
+- [Overview](#-overview)
+- [Arsitektur](#-architecture)
+- [Fitur](#-features)
+- [Instalasi](#-installation)
+- [Menjalankan API](#-running-the-api)
+- [API Endpoints](#-api-endpoints)
+- [Pipeline ML](#-ml-pipeline)
+- [Models](#-models)
+- [Frontend Integration](#-frontend-integration)
+
+---
 
 ## 📝 Overview
 
-Dokumentasi ini menjelaskan endpoint REST API yang digunakan untuk komunikasi antara backend Python dan frontend Next.js. [cite_start]Sistem ini mendukung proyek prediksi harga Bitcoin menggunakan Hybrid Model (LSTM + Sentiment Analysis) sesuai dengan metodologi CRISP-DM[cite: 16].
-
-Base URL: `http://localhost:8000/api/v1` (Default Development)
-
----
-
-## 🔐 Authentication
-
-Saat ini API bersifat publik untuk keperluan development dashboard. Jika diperlukan di masa depan, otentikasi akan menggunakan **Bearer Token**.
-
-- **Header:** `Authorization: Bearer <token>`
+Sistem ini memprediksi harga Bitcoin menggunakan:
+- **Data Sources**: CoinGecko, Twitter, Reddit, News API
+- **Technical Indicators**: SMA, EMA, RSI, MACD, Bollinger Bands, ATR
+- **Sentiment Analysis**: BERT/Transformer-based sentiment scoring
+- **Models**: LSTM, GRU, Transformer, Ensemble
+- **Orchestration**: Apache Airflow (optional)
+- **Visualization**: Grafana Dashboard
 
 ---
 
-## 📚 Resources
+## 🏗 Architecture
 
-### 1. Cryptocurrency Data
-Mengelola data aset kripto yang tersedia.
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      Apache Airflow (Orchestrator)               │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
+│  │  Twitter API │  │  Reddit API  │  │ CoinGecko API│           │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘           │
+│         │                  │                  │                  │
+│         └──────────────────┼──────────────────┘                  │
+│                            ▼                                     │
+│                 ┌─────────────────────┐                          │
+│                 │   Data Processor    │                          │
+│                 │ (Cleaning, Features)│                          │
+│                 └──────────┬──────────┘                          │
+│                            ▼                                     │
+│    ┌───────────┬───────────┼───────────┬───────────┐            │
+│    │   LSTM    │    GRU    │Transformer│  Ensemble │            │
+│    └─────┬─────┴─────┬─────┴─────┬─────┴─────┬─────┘            │
+│          └───────────┴───────────┴───────────┘                   │
+│                            ▼                                     │
+│                 ┌─────────────────────┐                          │
+│                 │  Model Evaluator    │                          │
+│                 │  (Best Model Select)│                          │
+│                 └──────────┬──────────┘                          │
+│                            ▼                                     │
+│                 ┌─────────────────────┐                          │
+│                 │ Prediction Service  │◄─────► REST API          │
+│                 └─────────────────────┘                          │
+│                            ▼                                     │
+│                 ┌─────────────────────┐                          │
+│                 │  PostgreSQL + Grafana│                         │
+│                 └─────────────────────┘                          │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-#### 1.1 Get All Cryptocurrencies
-Mengambil daftar semua cryptocurrency yang didukung untuk ditampilkan di dropdown menu atau halaman *overview*.
+---
 
-- **Endpoint:** `GET /cryptocurrencies`
-- **Query Parameters:**
-  - `is_active` (boolean, optional): Filter status aktif. Default: `true`.
-- **Response (200 OK):**
-  ```json
-  [
-    {
-      "crypto_id": 1,
-      "symbol": "BTC",
-      "name": "Bitcoin",
-      "coingecko_id": "bitcoin",
-      "market_cap_rank": 1,
-      "logo_url": "[https://assets.coingecko.com/coins/images/1/small/bitcoin.png](https://assets.coingecko.com/coins/images/1/small/bitcoin.png)"
-    },
-    {
-      "crypto_id": 2,
-      "symbol": "ETH",
-      "name": "Ethereum",
-      "coingecko_id": "ethereum",
-      "market_cap_rank": 2,
-      "logo_url": "..."
-    }
-  ]
+## ✨ Features
 
-2. Market Data (Time Series)
-Mengambil data historis OHLCV untuk visualisasi grafik harga (Candlestick Chart) di Next.js (menggunakan Recharts/Chart.js).
+| Feature | Description |
+|---------|-------------|
+| 📊 **Multi-Source Data** | Twitter, Reddit, CoinGecko, News API |
+| 📈 **Technical Indicators** | SMA, EMA, RSI, MACD, Bollinger, ATR |
+| 🤖 **4 Model Types** | LSTM, GRU, Transformer, Ensemble |
+| 🎯 **Auto Model Selection** | Best model picked by lowest RMSE |
+| 🔮 **Multi-Horizon Prediction** | 1, 3, 7, 14, 30 days ahead |
+| 📉 **Confidence Intervals** | 68% and 95% bounds |
+| 🌐 **REST API** | FastAPI with auto-generated docs |
+| 📺 **Grafana Dashboard** | Real-time monitoring |
 
-2.1 Get Historical Prices
-Data ini bersumber dari tabel CryptoPrice.
+---
 
-Endpoint: GET /market/prices/{symbol}
+## 🛠 Installation
 
-Path Parameters:
+### Prerequisites
+- Python 3.9+
+- pip
 
-symbol: Simbol koin (misal: BTC).
+### Setup
 
-Query Parameters:
+```bash
+# Clone repository
+git clone https://github.com/bimoBintang/btc-price-prediction-hybrid-lstm-sentiment-crispdm.git
+cd machine-learning
 
-start_date (string, required): Format YYYY-MM-DD.
+# Create virtual environment
+python -m venv myenv
+source myenv/bin/activate  # On Windows: myenv\Scripts\activate
 
-end_date (string, required): Format YYYY-MM-DD.
+# Install dependencies
+pip install -r requirements.txt
 
-timeframe (string, optional): Default 1d.
+# Setup environment variables
+cp .env.example .env
+# Edit .env with your API keys
+```
 
-Response (200 OK):
+### Environment Variables
 
-JSON
+```env
+# Database
+DATABASE_URL=postgresql://user:pass@localhost:5432/btc_prediction
 
-[
-  {
-    "timestamp": "2024-01-01T00:00:00Z",
-    "date_only": "2024-01-01",
-    "open": 42000.50,
-    "high": 42500.00,
-    "low": 41800.00,
-    "close": 42250.75,
-    "volume": 15000000.00
-  },
-  {
-    "timestamp": "2024-01-02T00:00:00Z",
-    "date_only": "2024-01-02",
-    "open": 42250.75,
-    "high": 43000.00,
-    "low": 42100.00,
-    "close": 42800.00,
-    "volume": 18000000.00
-  }
-]
-2.2 Get Technical Indicators
-Mengambil indikator teknikal (RSI, MACD, SMA) untuk overlay pada grafik harga.
+# APIs
+COINGECKO_API_KEY=your_key
+NEWS_API_KEY=your_key
+TWITTER_USERNAME=your_username
+TWITTER_PASSWORD=your_password
+REDDIT_CLIENT_ID=your_id
+REDDIT_CLIENT_SECRET=your_secret
+```
 
-Endpoint: GET /market/indicators/{symbol}
+---
 
-Query Parameters: start_date, end_date.
+## 🚀 Running the API
 
-Response (200 OK):
+### Quick Start
 
-JSON
+```bash
+python run_api.py
+```
 
-[
-  {
-    "date_only": "2024-01-02",
-    "sma_50": 41500.20,
-    "rsi_14": 55.4,
-    "macd": 120.5,
-    "macd_signal": 115.2,
-    "bollinger_upper": 44000.00,
-    "bollinger_lower": 40000.00
-  }
-]
-3. Sentiment Analysis Data
-Endpoint ini krusial untuk fitur "Hybrid Model", menampilkan bagaimana sentimen sosial media (Twitter/Reddit) mempengaruhi pasar.
+### With Uvicorn
 
-3.1 Get Daily Sentiment Aggregation
-Mengambil skor sentimen harian yang sudah diolah. Digunakan untuk grafik korelasi antara Harga vs Sentimen.
+```bash
+uvicorn src.api.api:app --reload --host 0.0.0.0 --port 8000
+```
 
-Endpoint: GET /sentiment/daily/{symbol}
+### Access Points
 
-Query Parameters: start_date, end_date.
+| URL | Description |
+|-----|-------------|
+| http://localhost:8000 | API Root |
+| http://localhost:8000/api/docs | Swagger UI (Interactive Docs) |
+| http://localhost:8000/api/redoc | ReDoc (Alternative Docs) |
 
-Response (200 OK):
+---
 
-JSON
+## 📡 API Endpoints
 
-[
-  {
-    "date_only": "2024-01-02",
-    "total_posts": 5430,
-    "net_sentiment_score": 0.45,  // Skala -1.0 s/d 1.0
-    "fear_index": 0.30,
-    "greed_index": 0.70,
-    "positive_percentage": 65.5,
-    "negative_percentage": 20.5,
-    "neutral_percentage": 14.0
-  }
-]
-3.2 Get Recent Social Posts (Feed)
-Menampilkan live feed atau daftar postingan terbaru terkait aset di dashboard untuk verifikasi manual pengguna.
+### Health Check
+```http
+GET /api/health
+```
 
-Endpoint: GET /sentiment/posts/{symbol}
+### Price Data
+```http
+GET /api/price/current       # Current BTC price
+GET /api/price/historical    # Historical OHLCV (params: days=30)
+GET /api/price/chart         # Chart-formatted data
+GET /api/price/ohlc          # Candlestick data
+GET /api/price/stats         # Price statistics
+```
 
-Query Parameters:
+### Predictions
+```http
+GET /api/prediction          # Next day prediction
+GET /api/prediction/multi    # Multi-horizon (1d, 3d, 7d, 14d, 30d)
+GET /api/prediction/history  # Historical predictions
+GET /api/prediction/accuracy # Prediction accuracy metrics
+```
 
-limit (int): Jumlah post (default: 10).
+### Sentiment
+```http
+GET /api/sentiment           # Sentiment data (params: days=30)
+GET /api/sentiment/current   # Current sentiment summary
+GET /api/sentiment/platforms # By platform (Twitter, Reddit, etc)
+GET /api/sentiment/trending  # Trending topics
+```
 
-platform (string): Filter platform (e.g., 'Twitter', 'Reddit').
+### Technical Indicators
+```http
+GET /api/indicators          # All indicators (params: days=30)
+GET /api/indicators/current  # Latest indicator values
+```
 
-Response (200 OK):
+### Models
+```http
+GET /api/models              # All model metrics
+GET /api/models/best         # Best performing model
+GET /api/models/comparison   # Detailed comparison
+GET /api/models/training-history  # Training loss history
+```
 
-JSON
+### Dashboard (All-in-One)
+```http
+GET /api/dashboard           # All dashboard data in one request
+```
 
-[
-  {
-    "post_id": 10239,
-    "platform": "Twitter",
-    "author": "CryptoWhale",
-    "text": "Bitcoin looking bullish above 45k! #BTC",
-    "posted_at": "2024-01-02T14:30:00Z",
-    "sentiment_label": "positive",
-    "sentiment_score": 0.85
-  }
-]
-4. Prediction & Model Performance
-Endpoint untuk menampilkan hasil prediksi AI (LSTM) dan metrik evaluasinya.
+### Example Response
 
-4.1 Get Price Predictions (Forecast)
-Mengembalikan data prediksi untuk dibandingkan dengan harga asli (Actual vs Predicted).
-
-Endpoint: GET /predictions/{symbol}
-
-Query Parameters:
-
-model_name: 'Hybrid-LSTM' atau 'Benchmark-LSTM' (Default: 'Hybrid-LSTM').
-
-days_ahead: Jumlah hari prediksi ke depan (misal: 7).
-
-Response (200 OK):
-
-JSON
-
-[
-  {
-    "date": "2024-01-03",
-    "actual_price": 43000.00,       // Null jika masa depan
-    "predicted_price": 43150.20,
-    "lower_bound": 42800.00,        // Confidence Interval
-    "upper_bound": 43500.00,
-    "error_diff": 150.20,           // Selisih (hanya jika actual_price ada)
-    "is_future": false
-  },
-  {
-    "date": "2024-01-04",
-    "actual_price": null,
-    "predicted_price": 43400.00,
-    "lower_bound": 43000.00,
-    "upper_bound": 43800.00,
-    "is_future": true
-  }
-]
-4.2 Get Model Evaluation Metrics
-Menampilkan performa model untuk membuktikan kriteria sukses (Target MAE < 5%).
-
-
-Endpoint: GET /predictions/metrics
-
-Query Parameters: symbol, model_name.
-
-Response (200 OK):
-
-JSON
-
+```json
 {
-  "model_name": "Hybrid-LSTM",
-  "evaluation_date": "2024-01-01",
-  "metrics": {
-    "mae": 120.50,            // Mean Absolute Error
-    "rmse": 150.75,           // Root Mean Squared Error
-    "mape_percentage": 3.2,   // Mean Absolute Percentage Error
-    "r2_score": 0.89
+  "predicted_price": 97250.50,
+  "current_price": 95000.00,
+  "price_change": 2250.50,
+  "price_change_pct": 2.37,
+  "direction": "up",
+  "confidence": {
+    "lower_95": 92387.98,
+    "upper_95": 102113.03
   },
-  "improvement_vs_benchmark": {
-    "mae_reduction_percentage": 6.5, // Sukses jika > 5%
-    "status": "SUCCESS"
-  }
+  "prediction_date": "2024-12-12",
+  "model_name": "ensemble"
 }
-🛠️ System Health & Utils
-Health Check
-Digunakan oleh Kubernetes atau Load Balancer, serta untuk cek status database/redis.
+```
 
-Endpoint: GET /health
+---
 
-Response (200 OK):
+## 🔄 ML Pipeline
 
-JSON
+### Run Full Pipeline
 
-{
-  "status": "healthy",
-  "database": "connected",
-  "redis": "connected",
-  "timestamp": "2024-01-02T15:00:00Z"
+```bash
+# Standalone mode (without Airflow)
+python src/pipeline/btc_prediction_dag.py
+```
+
+### Pipeline Steps
+
+1. **Data Collection** - Collect data from APIs
+2. **Data Processing** - Clean, feature engineering
+3. **Model Training** - Train LSTM, GRU, Transformer, Ensemble
+4. **Evaluation** - Compare models, select best
+5. **Prediction** - Generate predictions
+6. **Export** - Save to database
+
+### Directory Structure
+
+```
+src/
+├── api/                          # REST API
+│   ├── api.py                    # Main FastAPI app
+│   ├── routes.py                 # Additional routes
+│   └── config.py                 # Settings
+│
+├── pipeline/                     # ML Pipeline
+│   ├── btc_prediction_dag.py     # Airflow DAG
+│   ├── data_collection/          # Data scrapers
+│   │   ├── coingecko_client.py
+│   │   └── data_collector.py
+│   ├── data_processing/          # Feature engineering
+│   │   └── data_processor.py
+│   ├── models/                   # ML models
+│   │   ├── lstm_gru_model.py
+│   │   ├── transformer_model.py
+│   │   ├── ensemble_model.py
+│   │   └── model_factory.py
+│   ├── evaluation/               # Model evaluation
+│   │   └── model_evaluator.py
+│   ├── prediction/               # Prediction service
+│   │   └── prediction_service.py
+│   └── storage/                  # Data export
+│       └── data_exporter.py
+│
+├── data_understanding/           # Sentiment scraping
+│   └── scrape_sentiment.py
+│
+└── models/                       # Database schema
+    └── databaseSchema.py
+```
+
+---
+
+## 🤖 Models
+
+### LSTM/GRU Model
+- Multi-layer recurrent network
+- Attention mechanism
+- Dropout regularization
+- Sequence length: 30 days
+
+### Transformer Model
+- Multi-head self-attention
+- Positional encoding
+- GELU activation
+- Global attention pooling
+
+### Ensemble Model
+- Combines LSTM, GRU, Transformer
+- Methods: Average, Weighted, Stacking
+- Learnable weights
+- Best of all approaches
+
+### Metrics
+
+| Model | MAE | RMSE | MAPE | R² |
+|-------|-----|------|------|-----|
+| LSTM | ~1000 | ~1500 | ~2.5% | 0.92 |
+| GRU | ~1100 | ~1600 | ~2.7% | 0.90 |
+| Transformer | ~900 | ~1400 | ~2.3% | 0.93 |
+| **Ensemble** | **~800** | **~1200** | **~2.0%** | **0.95** |
+
+---
+
+## 🌐 Frontend Integration
+
+### Fetching Data (Next.js)
+
+```typescript
+// lib/api.ts
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+export async function getCurrentPrice() {
+  const res = await fetch(`${API_URL}/api/price/current`);
+  return res.json();
 }
-💻 Type Definitions (TypeScript Interface)
-Gunakan definisi tipe ini di frontend Next.js Anda (src/types/api.ts) untuk type-safety.
 
-TypeScript
+export async function getPrediction() {
+  const res = await fetch(`${API_URL}/api/prediction`);
+  return res.json();
+}
 
-// Tipe untuk Grafik Harga
-export interface CryptoPriceData {
+export async function getDashboardData() {
+  const res = await fetch(`${API_URL}/api/dashboard`);
+  return res.json();
+}
+```
+
+### React Query Example
+
+```typescript
+// hooks/usePrice.ts
+import { useQuery } from '@tanstack/react-query';
+
+export function useCurrentPrice() {
+  return useQuery({
+    queryKey: ['price', 'current'],
+    queryFn: () => fetch('/api/price/current').then(r => r.json()),
+    refetchInterval: 60000, // Refresh every minute
+  });
+}
+```
+
+### TypeScript Types
+
+```typescript
+// types/api.ts
+export interface PriceData {
+  price: number;
+  change_24h: number;
+  change_pct_24h: number;
+  high_24h: number;
+  low_24h: number;
+  volume_24h: number;
+  market_cap: number;
   timestamp: string;
-  date_only: string;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
 }
 
-// Tipe untuk Sentimen Harian
-export interface DailySentiment {
-  date_only: string;
-  net_sentiment_score: number;
-  fear_index: number;
-  greed_index: number;
-  total_posts: number;
-}
-
-// Tipe untuk Prediksi
 export interface PredictionData {
-  date: string;
-  actual_price: number | null;
   predicted_price: number;
-  lower_bound?: number;
-  upper_bound?: number;
-  is_future: boolean;
+  current_price: number;
+  price_change: number;
+  price_change_pct: number;
+  direction: 'up' | 'down';
+  confidence: {
+    lower_95: number;
+    upper_95: number;
+  };
+  prediction_date: string;
+  model_name: string;
 }
 
-### Tips Integrasi Next.js
+export interface SentimentData {
+  date: string;
+  score: number;
+  label: 'positive' | 'negative' | 'neutral';
+  discussion_volume: number;
+  engagement: number;
+}
+```
 
-1.  **Fetching Data:** Gunakan library seperti **TanStack Query (React Query)** atau **SWR** di Next.js untuk memanggil endpoint ini. Ini akan menangani *caching*, *loading state*, dan *error handling* secara otomatis.
-2.  **Server Components:** Untuk data awal (seperti daftar Crypto), Anda bisa memanggil endpoint ini langsung di *Server Components* (`app/page.tsx`) agar SEO lebih baik dan load awal lebih cepat.
-3.  **Environment Variables:** Pastikan URL backend disimpan di `.env.local` frontend:
-    `NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1`
+### Environment Variables (Frontend)
+
+```env
+# .env.local
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+---
+
+## 📊 Grafana Dashboard
+
+Import `config/grafana_config.json` to Grafana for visualization:
+
+- Current BTC Price
+- Predicted Price
+- Model Accuracy (RMSE)
+- Sentiment Score
+- Price History Chart
+- Price vs Prediction
+- Sentiment Trend
+- Discussion Volume
+- Model Comparison Table
+- Technical Indicators (RSI)
+
+---
+
+## 🧪 Testing
+
+```bash
+# Syntax check all modules
+python -m py_compile src/api/api.py
+python -m py_compile src/pipeline/btc_prediction_dag.py
+
+# Run API tests (if available)
+pytest tests/ -v
+```
+
+---
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+## 👥 Contributors
+
+- **Bimo Bintang** - Initial work
+
+---
+
+## 🙏 Acknowledgments
+
+- CoinGecko for market data API
+- Hugging Face for Transformer models
+- CRISP-DM methodology for ML project structure

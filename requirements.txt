@@ -17,8 +17,11 @@ dotenv
 statsmodels
 shap
 pydantic
+pydantic-settings
 fastapi
-uvicorn
+uvicorn[standard]
+websockets
+requests
 ta
 sqlalchemy
 huggingface-hub

@@ -51,7 +51,7 @@ class SentimentTransformerClassifier(nn.Module):
         num_layers: int = 2,
         num_heads: int = 4,
         dropout: float = 0.1,
-        embedding_model: str = "gemma",  # Default
+        embedding_model: str = "mpnet",  # Default
     ) -> None:
         super().__init__()
         self.embedding_cache = {}

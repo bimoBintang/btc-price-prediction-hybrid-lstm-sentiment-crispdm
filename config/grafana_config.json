@@ -1,0 +1,420 @@
+{
+    "dashboard": {
+        "id": null,
+        "uid": "btc-prediction",
+        "title": "BTC Price Prediction Dashboard",
+        "tags": [
+            "btc",
+            "ml",
+            "prediction"
+        ],
+        "timezone": "browser",
+        "refresh": "5m",
+        "schemaVersion": 38,
+        "panels": [
+            {
+                "id": 1,
+                "title": "Current BTC Price",
+                "type": "stat",
+                "gridPos": {
+                    "h": 4,
+                    "w": 6,
+                    "x": 0,
+                    "y": 0
+                },
+                "targets": [
+                    {
+                        "rawSql": "SELECT close_price as value FROM crypto_prices WHERE crypto_id = 1 ORDER BY timestamp DESC LIMIT 1",
+                        "format": "table"
+                    }
+                ],
+                "options": {
+                    "colorMode": "value",
+                    "graphMode": "area",
+                    "justifyMode": "auto"
+                },
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "currencyUSD",
+                        "decimals": 2,
+                        "thresholds": {
+                            "mode": "absolute",
+                            "steps": [
+                                {
+                                    "color": "red",
+                                    "value": null
+                                },
+                                {
+                                    "color": "yellow",
+                                    "value": 30000
+                                },
+                                {
+                                    "color": "green",
+                                    "value": 50000
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                "id": 2,
+                "title": "Predicted Price (Next Day)",
+                "type": "stat",
+                "gridPos": {
+                    "h": 4,
+                    "w": 6,
+                    "x": 6,
+                    "y": 0
+                },
+                "targets": [
+                    {
+                        "rawSql": "SELECT predicted_close_price as value FROM model_predictions WHERE crypto_id = 1 ORDER BY created_at DESC LIMIT 1",
+                        "format": "table"
+                    }
+                ],
+                "options": {
+                    "colorMode": "value",
+                    "graphMode": "none"
+                },
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "currencyUSD",
+                        "decimals": 2
+                    }
+                }
+            },
+            {
+                "id": 3,
+                "title": "Model Accuracy (RMSE)",
+                "type": "gauge",
+                "gridPos": {
+                    "h": 4,
+                    "w": 6,
+                    "x": 12,
+                    "y": 0
+                },
+                "targets": [
+                    {
+                        "rawSql": "SELECT rmse as value FROM model_performance_metrics WHERE model_name = 'ensemble' ORDER BY created_at DESC LIMIT 1",
+                        "format": "table"
+                    }
+                ],
+                "options": {
+                    "showThresholdLabels": false,
+                    "showThresholdMarkers": true
+                },
+                "fieldConfig": {
+                    "defaults": {
+                        "min": 0,
+                        "max": 5000,
+                        "thresholds": {
+                            "mode": "absolute",
+                            "steps": [
+                                {
+                                    "color": "green",
+                                    "value": null
+                                },
+                                {
+                                    "color": "yellow",
+                                    "value": 1000
+                                },
+                                {
+                                    "color": "red",
+                                    "value": 2500
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                "id": 4,
+                "title": "Sentiment Score",
+                "type": "gauge",
+                "gridPos": {
+                    "h": 4,
+                    "w": 6,
+                    "x": 18,
+                    "y": 0
+                },
+                "targets": [
+                    {
+                        "rawSql": "SELECT net_sentiment_score as value FROM daily_sentiment_aggregation WHERE crypto_id = 1 ORDER BY date_only DESC LIMIT 1",
+                        "format": "table"
+                    }
+                ],
+                "options": {
+                    "showThresholdLabels": true
+                },
+                "fieldConfig": {
+                    "defaults": {
+                        "min": -1,
+                        "max": 1,
+                        "thresholds": {
+                            "mode": "absolute",
+                            "steps": [
+                                {
+                                    "color": "red",
+                                    "value": null
+                                },
+                                {
+                                    "color": "yellow",
+                                    "value": -0.2
+                                },
+                                {
+                                    "color": "green",
+                                    "value": 0.2
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                "id": 5,
+                "title": "BTC Price History (30 Days)",
+                "type": "timeseries",
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 4
+                },
+                "targets": [
+                    {
+                        "rawSql": "SELECT timestamp as time, close_price as \"Close Price\" FROM crypto_prices WHERE crypto_id = 1 AND timestamp > NOW() - INTERVAL '30 days' ORDER BY timestamp",
+                        "format": "time_series"
+                    }
+                ],
+                "options": {
+                    "legend": {
+                        "displayMode": "list",
+                        "placement": "bottom"
+                    }
+                },
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "currencyUSD",
+                        "custom": {
+                            "lineWidth": 2,
+                            "fillOpacity": 10,
+                            "gradientMode": "opacity"
+                        }
+                    }
+                }
+            },
+            {
+                "id": 6,
+                "title": "Price vs Prediction",
+                "type": "timeseries",
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 4
+                },
+                "targets": [
+                    {
+                        "rawSql": "SELECT p.prediction_date as time, p.predicted_close_price as \"Predicted\", p.actual_close_price as \"Actual\" FROM model_predictions p WHERE p.crypto_id = 1 AND p.prediction_date > NOW() - INTERVAL '30 days' ORDER BY p.prediction_date",
+                        "format": "time_series"
+                    }
+                ],
+                "options": {
+                    "legend": {
+                        "displayMode": "list",
+                        "placement": "bottom"
+                    }
+                },
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "currencyUSD",
+                        "custom": {
+                            "lineWidth": 2
+                        }
+                    }
+                }
+            },
+            {
+                "id": 7,
+                "title": "Daily Sentiment Trend",
+                "type": "timeseries",
+                "gridPos": {
+                    "h": 6,
+                    "w": 12,
+                    "x": 0,
+                    "y": 12
+                },
+                "targets": [
+                    {
+                        "rawSql": "SELECT date_only as time, net_sentiment_score as \"Sentiment\" FROM daily_sentiment_aggregation WHERE crypto_id = 1 AND date_only > NOW() - INTERVAL '30 days' ORDER BY date_only",
+                        "format": "time_series"
+                    }
+                ],
+                "options": {
+                    "legend": {
+                        "displayMode": "hidden"
+                    }
+                },
+                "fieldConfig": {
+                    "defaults": {
+                        "min": -1,
+                        "max": 1,
+                        "custom": {
+                            "lineWidth": 2,
+                            "fillOpacity": 30,
+                            "gradientMode": "scheme"
+                        },
+                        "thresholds": {
+                            "mode": "absolute",
+                            "steps": [
+                                {
+                                    "color": "red",
+                                    "value": null
+                                },
+                                {
+                                    "color": "yellow",
+                                    "value": -0.2
+                                },
+                                {
+                                    "color": "green",
+                                    "value": 0.2
+                                }
+                            ]
+                        },
+                        "color": {
+                            "mode": "thresholds"
+                        }
+                    }
+                }
+            },
+            {
+                "id": 8,
+                "title": "Discussion Volume",
+                "type": "barchart",
+                "gridPos": {
+                    "h": 6,
+                    "w": 12,
+                    "x": 12,
+                    "y": 12
+                },
+                "targets": [
+                    {
+                        "rawSql": "SELECT date_only as time, total_posts as \"Posts\" FROM daily_sentiment_aggregation WHERE crypto_id = 1 AND date_only > NOW() - INTERVAL '30 days' ORDER BY date_only",
+                        "format": "time_series"
+                    }
+                ],
+                "options": {
+                    "legend": {
+                        "displayMode": "hidden"
+                    }
+                },
+                "fieldConfig": {
+                    "defaults": {
+                        "color": {
+                            "mode": "palette-classic"
+                        }
+                    }
+                }
+            },
+            {
+                "id": 9,
+                "title": "Model Comparison",
+                "type": "table",
+                "gridPos": {
+                    "h": 6,
+                    "w": 12,
+                    "x": 0,
+                    "y": 18
+                },
+                "targets": [
+                    {
+                        "rawSql": "SELECT model_name as \"Model\", mae as \"MAE\", rmse as \"RMSE\", mape as \"MAPE %\", r2_score as \"R²\", evaluation_date as \"Date\" FROM model_performance_metrics WHERE evaluation_date = (SELECT MAX(evaluation_date) FROM model_performance_metrics) ORDER BY rmse",
+                        "format": "table"
+                    }
+                ],
+                "options": {
+                    "showHeader": true
+                },
+                "fieldConfig": {
+                    "defaults": {
+                        "custom": {
+                            "align": "auto"
+                        }
+                    },
+                    "overrides": [
+                        {
+                            "matcher": {
+                                "id": "byName",
+                                "options": "Model"
+                            },
+                            "properties": [
+                                {
+                                    "id": "custom.width",
+                                    "value": 120
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+            {
+                "id": 10,
+                "title": "Technical Indicators",
+                "type": "timeseries",
+                "gridPos": {
+                    "h": 6,
+                    "w": 12,
+                    "x": 12,
+                    "y": 18
+                },
+                "targets": [
+                    {
+                        "rawSql": "SELECT date_only as time, rsi_14 as \"RSI\", 30 as \"Oversold\", 70 as \"Overbought\" FROM technical_indicators WHERE crypto_id = 1 AND date_only > NOW() - INTERVAL '30 days' ORDER BY date_only",
+                        "format": "time_series"
+                    }
+                ],
+                "options": {
+                    "legend": {
+                        "displayMode": "list",
+                        "placement": "right"
+                    }
+                },
+                "fieldConfig": {
+                    "defaults": {
+                        "min": 0,
+                        "max": 100,
+                        "custom": {
+                            "lineWidth": 2
+                        }
+                    }
+                }
+            }
+        ]
+    },
+    "datasource": {
+        "name": "PostgreSQL",
+        "type": "postgres",
+        "url": "ep-crimson-bread-a4whmqk2-pooler.us-east-1.aws.neon.tech",
+        "database": "neondb",
+        "user": "neondb_owner",
+        "password": "npg_RxlmdPD9Q5tv",
+        "sslmode": "require"
+    },
+    "alerting": {
+        "rules": [
+            {
+                "name": "High Prediction Error",
+                "condition": "rmse > 2000",
+                "message": "Model prediction error is high. Consider retraining.",
+                "severity": "warning"
+            },
+            {
+                "name": "Extreme Sentiment",
+                "condition": "abs(sentiment) > 0.8",
+                "message": "Extreme market sentiment detected.",
+                "severity": "info"
+            }
+        ]
+    }
+}
