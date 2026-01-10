@@ -54,9 +54,10 @@ class DataCollector:
         """Load configuration from environment variables."""
         return {
             # Twitter
-            'twitter_username': os.getenv('TWITTER_USERNAME'),
-            'twitter_password': os.getenv('TWITTER_PASSWORD'),
-            'twitter_email': os.getenv('TWITTER_EMAIL'),
+            'twitter_api_key': os.getenv('TWITTER_API_KEY'),
+            'twitter_api_secret_key': os.getenv('TWITTER_API_SECRET_KEY'),
+            'twitter_access_token': os.getenv('TWITTER_ACCESS_TOKEN'),
+            'twitter_access_token_secret': os.getenv('TWITTER_ACCESS_TOKEN_SECRET'),
             # Reddit
             'reddit_client_id': os.getenv('REDDIT_CLIENT_ID'),
             'reddit_client_secret': os.getenv('REDDIT_CLIENT_SECRET'),

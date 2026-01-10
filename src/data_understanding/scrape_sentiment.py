@@ -16,12 +16,14 @@ except ImportError:
     print("[Warning] twscrape tidak terinstall → Twitter akan pakai fallback snscrape (mungkin gagal)")
 
 # Try to import snscrape for Reddit
+# Note: snscrape has compatibility issues with Python 3.12+
 try:
     import snscrape.modules.reddit as snreddit
     SNSCRAPE_AVAILABLE = True
-except ImportError:
+except (ImportError, AttributeError, Exception) as e:
     SNSCRAPE_AVAILABLE = False
-    print("[Warning] snscrape tidak terinstall → Reddit scraping tidak tersedia")
+    snreddit = None  # Define as None to avoid NameError
+    print(f"[Warning] snscrape tidak kompatibel dengan Python ini: {e}")
 
 nltk.download('vader_lexicon')
 
