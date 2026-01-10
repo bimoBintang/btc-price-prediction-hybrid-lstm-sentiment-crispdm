@@ -163,7 +163,7 @@ class DataScrapingCollector:
         self.facebook_access_token = config.get('facebook_access_token')
         self.facebook_page_id = config.get('facebook_page_id')
         # News API
-        self.newsapi_key = config.get('newsapi_key', os.getenv('NEWS_API_KEY', ''), default=str(os.getenv('NEWS_API_KEY', '')))
+        self.newsapi_key = config.get('newsapi_key') or os.getenv('NEWS_API_KEY', '')
 
         # Target
         self.crypto_subs = [
